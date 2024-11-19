@@ -12,8 +12,10 @@ list_t *extract_head(list_t **head) {
     list_t *p = *head;  // Step 1: Set p to point to the head of the list
     if (*head != NULL) {
         *head = (*head)->next;  // Step 2: Update head to point to the next node
+        free(p);  // Step 3: Free the extracted head node to prevent memory leaks
+        return NULL;  // Return NULL after freeing the node
     }
-    return p;  // Return the original head node
+    return NULL;  // Return NULL if the list was empty
 }
 
 // Example usage
@@ -40,11 +42,7 @@ int main() {
     third->next = NULL;       // The third node is the last, so its next pointer is NULL
 
     // Extract the head node
-    list_t *extracted_node = extract_head(&head);
-    if (extracted_node != NULL) {
-        printf("Extracted node with value: %d\n", extracted_node->key);
-        free(extracted_node);  // Free the extracted node to prevent memory leaks
-    }
+    extract_head(&head);  // Extract and free the head node
 
     // Print the remaining list
     list_t *current = head;
@@ -71,7 +69,7 @@ Description of the Code:
 2. **`extract_head` Function**:
    - This function takes a double pointer to the head of the linked list (`list_t **head`).
    - The function extracts the current head node and updates the head pointer to point to the next node in the list.
-   - The original head node is returned, allowing the caller to access or free it.
+   - The extracted head node is then freed to prevent memory leaks.
 
 3. **Memory Allocation**:
    - The `malloc` function is used to dynamically allocate memory for the linked list nodes.
@@ -82,8 +80,8 @@ Description of the Code:
    - The last node's `next` pointer is set to `NULL` to indicate the end of the list.
 
 5. **Extracting the Head Node**:
-   - The `extract_head` function is called to remove the head node from the list.
-   - The extracted node's value is printed, and the node is freed to prevent memory leaks.
+   - The `extract_head` function is called to remove and free the head node from the list.
+   - This ensures that the memory occupied by the head node is released to prevent memory leaks.
 
 6. **Printing the Remaining List**:
    - After extracting the head node, the remaining list is printed to show the updated structure of the linked list.
