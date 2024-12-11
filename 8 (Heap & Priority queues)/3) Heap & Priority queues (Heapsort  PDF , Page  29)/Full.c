@@ -56,28 +56,36 @@ void heapify(heap_t *heap, int i) {
 }
 
 // Function to build a max heap from the given array
-void buildHeap(heap_t *heap) {
-    // Start from the last non-leaf node and call heapify on each node
-    for (int i = heap->heapsize / 2 - 1; i >= 0; i--) {
+void heapbuild(heap_t *heap) {
+    int i;
+    // Start from the last non-leaf node (n/2 - 1) and call heapify on each node
+    for (i = (heap->heapsize) / 2 - 1; i >= 0; i--) {
         heapify(heap, i);
     }
+    return;
 }
 
 // Function to perform heap sort
-void heapSort(heap_t *heap) {
-    buildHeap(heap);  // Build a max heap
+void heapsort(heap_t *heap) {
+    int i, tmp;
+
+    // Build the max heap
+    heapbuild(heap);
+
+    tmp = heap->heapsize;  // Save the original heap size
 
     // One by one extract elements from the heap
-    for (int i = heap->heapsize - 1; i > 0; i--) {
-        // Move the current root (the largest element) to the end of the array
-        swap(heap, 0, i);
+    for (i = heap->heapsize - 1; i > 0; i--) {
+        swap(heap, 0, i);  // Move the current root (maximum) to the end of the array
 
-        // Decrease the heap size, as the largest element is now sorted
-        heap->heapsize--;
+        heap->heapsize--;  // Decrease the heap size
 
-        // Call heapify on the root to maintain the heap property
-        heapify(heap, 0);
+        heapify(heap, 0);  // Call heapify to restore the heap property
     }
+
+    heap->heapsize = tmp;  // Restore the original heap size
+
+    return;
 }
 
 // Function to print the heap array
@@ -108,10 +116,10 @@ int main() {
     printf("Original Heap: \n");
     printHeap(&heap);
 
-    // Perform heap sort to sort the heap elements
-    heapSort(&heap);
+    // Perform heap sort
+    heapsort(&heap);
 
-    // Print the sorted array
+    // Print the sorted heap
     printf("Sorted Heap: \n");
     printHeap(&heap);
 
