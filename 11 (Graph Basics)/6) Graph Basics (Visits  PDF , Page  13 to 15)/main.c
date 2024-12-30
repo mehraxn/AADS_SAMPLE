@@ -1,180 +1,152 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h> // For INT_MAX
+#include "queue.h" // Include a queue library for BFS
 
-// Define constants for vertex colors
-#define WHITE 0
-#define GREY 1
-#define BLACK 2
+// Define colors for BFS traversal
+typedef enum { WHITE, GREY, BLACK } color_t;
 
-typedef struct Edge {
-    struct Vertex *dst;
-    struct Edge *next;
+// Edge struct (for adjacency list)
+typedef struct edge_s {
+    int weight;               // Weight of the edge (optional)
+    struct vertex_s *dst;     // Pointer to the destination vertex
+    struct edge_s *next;      // Pointer to the next edge in the adjacency list
 } edge_t;
 
-typedef struct Vertex {
-    int id;
-    int color;
-    int dist;
-    struct Vertex *pred;
-    struct Edge *head;
-    struct Vertex *next;
+// Vertex struct
+typedef struct vertex_s {
+    int id;                   // Vertex identifier
+    color_t color;            // Color: WHITE, GREY, or BLACK
+    int dist;                 // Distance from the source
+    struct vertex_s *pred;    // Predecessor in BFS
+    edge_t *head;             // Head of the adjacency list for this vertex
+    struct vertex_s *next;    // Pointer to the next vertex in the vertex list
 } vertex_t;
 
-typedef struct Graph {
-    vertex_t *g;
-    int nv; // Number of vertices
+// Graph struct
+typedef struct graph_s {
+    int nv;                   // Number of vertices
+    vertex_t *g;              // Pointer to the list of vertices
 } graph_t;
 
-// Function prototypes
-graph_t *graph_load(const char *filename);
-vertex_t *graph_find(graph_t *g, int id);
-void graph_attribute_init(graph_t *g);
-void graph_bfs(graph_t *g, vertex_t *src);
-void graph_dispose(graph_t *g);
-void *queue_init(int size);
-void queue_put(void *queue, void *element);
-int queue_empty_m(void *queue);
-void queue_get(void *queue, void **element);
-void queue_dispose(void *queue, void (*free_func)(void *));
-
-// Main function
-int main(int argc, char *argv[]) {
-    graph_t *g;
-    vertex_t *src, *n;
-    int i;
-
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <graph_file>\n", argv[0]);
-        return 1;
+// Function to initialize vertex attributes
+void graph_attribute_init(graph_t *graph) {
+    vertex_t *v = graph->g;
+    while (v != NULL) {
+        v->color = WHITE;
+        v->dist = INT_MAX; // Infinite distance initially
+        v->pred = NULL;
+        v = v->next;
     }
-
-    g = graph_load(argv[1]);
-    printf("Initial vertex? ");
-    scanf("%d", &i);
-    src = graph_find(g, i);
-
-    if (!src) {
-        fprintf(stderr, "Vertex %d not found in the graph.\n", i);
-        graph_dispose(g);
-        return 1;
-    }
-
-    graph_attribute_init(g);
-    graph_bfs(g, src);
-
-    n = g->g;
-    printf("List of vertices:\n");
-    while (n != NULL) {
-        if (n->color != WHITE) {
-            printf("%2d: %d (%d)\n",
-                   n->id, n->dist, n->pred ? n->pred->id : -1);
-        }
-        n = n->next;
-    }
-
-    graph_dispose(g);
-    return 0;
 }
 
 // BFS function
 void graph_bfs(graph_t *g, vertex_t *n) {
-    void *qp;
-    vertex_t *d;
-    edge_t *e;
+    queue_t *qp;              // Queue for BFS
+    vertex_t *d;              // Destination vertex pointer
+    edge_t *e;                // Edge pointer for adjacency list traversal
 
+    // Initialize queue
     qp = queue_init(g->nv);
+    n->color = GREY;          // Mark the starting node as discovered (GREY)
+    n->dist = 0;              // Distance from the source is 0
+    n->pred = NULL;           // No predecessor for the source
+    queue_put(qp, (void *)n); // Enqueue the source vertex
 
-    n->color = GREY;
-    n->dist = 0;
-    n->pred = NULL;
-    queue_put(qp, (void *)n);
+    // Start BFS
+    while (!queue_empty(qp)) {
+        queue_get(qp, (void **)&n); // Dequeue the front vertex
+        e = n->head;               // Access adjacency list of current vertex
 
-    while (!queue_empty_m(qp)) {
-        queue_get(qp, (void **)&n);
-        e = n->head;
-
+        // Explore all adjacent vertices
         while (e != NULL) {
-            d = e->dst;
-
-            if (d->color == WHITE) {
-                d->color = GREY;
-                d->dist = n->dist + 1;
-                d->pred = n;
-                queue_put(qp, (void *)d);
+            d = e->dst; // Get the destination vertex from the edge
+            if (d->color == WHITE) { // If vertex is unvisited
+                d->color = GREY;     // Mark as discovered
+                d->dist = n->dist + 1; // Update distance
+                d->pred = n;         // Set predecessor
+                queue_put(qp, (void *)d); // Enqueue the vertex
             }
-
-            e = e->next;
+            e = e->next; // Move to the next edge in the adjacency list
         }
-
-        n->color = BLACK;
+        n->color = BLACK; // Mark the current vertex as fully processed
     }
 
+    // Clean up
     queue_dispose(qp, NULL);
 }
 
-// Function to initialize graph attributes
-void graph_attribute_init(graph_t *g) {
-    vertex_t *n = g->g;
-    while (n != NULL) {
-        n->color = WHITE;
-        n->dist = -1;
-        n->pred = NULL;
-        n = n->next;
-    }
-}
-
-// Function to find a vertex in the graph by ID
-vertex_t *graph_find(graph_t *g, int id) {
-    vertex_t *n = g->g;
-    while (n != NULL) {
-        if (n->id == id) {
-            return n;
-        }
-        n = n->next;
-    }
-    return NULL;
-}
-
-// Function to dispose of the graph
-void graph_dispose(graph_t *g) {
-    vertex_t *n = g->g;
-    while (n != NULL) {
-        edge_t *e = n->head;
-        while (e != NULL) {
-            edge_t *temp_e = e;
-            e = e->next;
-            free(temp_e);
-        }
-        vertex_t *temp_n = n;
-        n = n->next;
-        free(temp_n);
-    }
-    free(g);
-}
-
-// Dummy queue functions (Replace with actual queue implementation)
-void *queue_init(int size) {
-    return malloc(size * sizeof(void *)); // Simplified queue initialization
-}
-
-void queue_put(void *queue, void *element) {
-    // Simplified for illustration
-}
-
-int queue_empty_m(void *queue) {
-    return 0; // Simplified for illustration
-}
-
-void queue_get(void *queue, void **element) {
-    // Simplified for illustration
-}
-
-void queue_dispose(void *queue, void (*free_func)(void *)) {
-    free(queue);
-}
-
-// Function to load a graph from a file (dummy implementation)
+// Function to load a graph (dummy implementation for demonstration)
 graph_t *graph_load(const char *filename) {
-    // Dummy implementation: Replace with actual graph loading code
+    // This function should parse a file to build the graph.
+    // For now, we return NULL as a placeholder.
+    printf("graph_load: Functionality not implemented.\n");
     return NULL;
+}
+
+// Function to dispose of the graph and free memory
+void graph_dispose(graph_t *graph) {
+    vertex_t *v = graph->g;
+    while (v != NULL) {
+        edge_t *e = v->head;
+        while (e != NULL) {
+            edge_t *temp = e;
+            e = e->next;
+            free(temp);
+        }
+        vertex_t *temp = v;
+        v = v->next;
+        free(temp);
+    }
+    free(graph);
+}
+
+// Function to find a vertex by ID
+vertex_t *graph_find(graph_t *graph, int id) {
+    vertex_t *v = graph->g;
+    while (v != NULL) {
+        if (v->id == id)
+            return v;
+        v = v->next;
+    }
+    return NULL;
+}
+
+// Main function to test BFS
+int main() {
+    // Example placeholder to integrate graph_load when implemented
+    graph_t *graph = graph_load("graph.txt");
+
+    if (!graph) {
+        printf("Failed to load graph.\n");
+        return 1;
+    }
+
+    // Prompt user for starting vertex
+    int i;
+    printf("Initial vertex? ");
+    scanf("%d", &i);
+    vertex_t *src = graph_find(graph, i);
+
+    if (src == NULL) {
+        printf("Vertex %d not found in the graph.\n", i);
+        graph_dispose(graph);
+        return 1;
+    }
+
+    // Perform BFS starting from the user-specified vertex
+    graph_attribute_init(graph);
+    printf("BFS starting from vertex %d:\n", i);
+    graph_bfs(graph, src);
+
+    // Print results
+    vertex_t *v = graph->g;
+    while (v != NULL) {
+        printf("Vertex %d: Distance = %d, Predecessor = %d\n",
+               v->id, v->dist, v->pred ? v->pred->id : -1);
+        v = v->next;
+    }
+
+    graph_dispose(graph);
+    return 0;
 }
